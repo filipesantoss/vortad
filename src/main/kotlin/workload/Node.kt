@@ -105,7 +105,9 @@ class Node private constructor(
     }
 
     private suspend fun meet(neighbors: Set<String>) = mutex.withLock {
-        this.neighbors.addAll(neighbors)
+        this.neighbors.addAll(neighbors.filter {
+            it != id
+        })
     }
 
     private suspend fun ping(message: BroadcastMessage) {
