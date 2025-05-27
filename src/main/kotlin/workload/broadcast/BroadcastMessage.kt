@@ -23,23 +23,20 @@ data class BroadcastMessage(
         override val messageId: Int,
         @SerialName("message")
         val message: Int
-    ) : Message.Body(Type.TOPOLOGY) {
+    ) : Message.Body(Type.BROADCAST) {
         override val inReplyTo: Int? = null
     }
 
-    class Handler(override val node: Node) : Message.Handler<BroadcastMessage>() {
-        override suspend fun accept(message: BroadcastMessage) {
-            val response = BroadcastOkMessage(
-                source = node.id,
-                destination = message.source,
-                body = BroadcastOkMessage.Body(
-                    messageId = node.next(),
-                    inReplyTo = message.body.messageId
-                )
+    class Response(
+        override val to: BroadcastMessage
+    ) : Message.Response<BroadcastMessage, BroadcastOkMessage>() {
+        override suspend fun through(node: Node) = BroadcastOkMessage(
+            source = node.id,
+            destination = to.source,
+            body = BroadcastOkMessage.Body(
+                messageId = node.next(),
+                inReplyTo = to.body.messageId
             )
-
-            node.produce(response)
-            node.accept(message)
-        }
+        )
     }
 }

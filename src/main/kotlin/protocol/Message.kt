@@ -49,9 +49,9 @@ abstract class Message {
         READ_OK,
     }
 
-    abstract class Handler<M : Message> {
-        abstract val node: Node
+    abstract class Response<I : Message, O : Message> {
+        abstract val to: I
 
-        abstract suspend fun accept(message: M)
+        abstract suspend fun through(node: Node): O
     }
 }

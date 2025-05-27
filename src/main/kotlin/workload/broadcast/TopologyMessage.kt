@@ -27,21 +27,16 @@ data class TopologyMessage(
         override val inReplyTo: Int? = null
     }
 
-    class Handler(override val node: Node) : Message.Handler<TopologyMessage>() {
-        override suspend fun accept(message: TopologyMessage) {
-            val response = TopologyOkMessage(
-                source = node.id,
-                destination = message.source,
-                body = TopologyOkMessage.Body(
-                    messageId = node.next(),
-                    inReplyTo = message.body.messageId
-                )
+    class Response(
+        override val to: TopologyMessage
+    ) : Message.Response<TopologyMessage, TopologyOkMessage>() {
+        override suspend fun through(node: Node) = TopologyOkMessage(
+            source = node.id,
+            destination = to.source,
+            body = TopologyOkMessage.Body(
+                messageId = node.next(),
+                inReplyTo = to.body.messageId
             )
-
-            node.produce(response)
-
-            val neighbors = message.body.topology[node.id]
-            node.meet(neighbors as Set<String>)
-        }
+        )
     }
 }

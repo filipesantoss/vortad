@@ -22,19 +22,17 @@ data class ReadMessage(
         override val inReplyTo: Int? = null
     }
 
-    class Handler(override val node: Node) : Message.Handler<ReadMessage>() {
-        override suspend fun accept(message: ReadMessage) {
-            val response = ReadOkMessage(
-                source = node.id,
-                destination = message.source,
-                body = ReadOkMessage.Body(
-                    messageId = node.next(),
-                    inReplyTo = message.body.messageId,
-                    messages = node.getMessages()
-                )
+    class Response(
+        override val to: ReadMessage
+    ) : Message.Response<ReadMessage, ReadOkMessage>() {
+        override suspend fun through(node: Node) = ReadOkMessage(
+            source = node.id,
+            destination = to.source,
+            body = ReadOkMessage.Body(
+                messageId = node.next(),
+                inReplyTo = to.body.messageId,
+                messages = node.getMessages()
             )
-
-            node.produce(response)
-        }
+        )
     }
 }

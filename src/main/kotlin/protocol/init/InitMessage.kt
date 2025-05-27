@@ -22,23 +22,23 @@ data class InitMessage(
         @SerialName("msg_id")
         override val messageId: Int,
         @SerialName("node_id")
-        val nodeId: String
+        val nodeId: String,
+        @SerialName("node_ids")
+        val nodeIds: Set<String>
     ) : Message.Body(Type.INIT) {
         override val inReplyTo: Int? = null
     }
 
-    class Handler(override val node: Node) : Message.Handler<InitMessage>() {
-        override suspend fun accept(message: InitMessage) {
-            val response = InitOkMessage(
-                source = node.id,
-                destination = message.source,
-                body = InitOkMessage.Body(
-                    messageId = node.next(),
-                    inReplyTo = message.body.messageId
-                )
+    class Response(
+        override val to: InitMessage
+    ) : Message.Response<InitMessage, InitOkMessage>() {
+        override suspend fun through(node: Node) = InitOkMessage(
+            source = node.id,
+            destination = to.source,
+            body = InitOkMessage.Body(
+                messageId = node.next(),
+                inReplyTo = to.body.messageId
             )
-
-            node.produce(response)
-        }
+        )
     }
 }
