@@ -2,6 +2,7 @@ package filipesantoss.vortad.workload
 
 import filipesantoss.vortad.protocol.Message
 import filipesantoss.vortad.protocol.init.InitMessage
+import filipesantoss.vortad.workload.broadcast.BroadcastMessage
 import filipesantoss.vortad.workload.broadcast.TopologyMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -16,7 +17,8 @@ class Node private constructor(
     val id: String,
     private var messageId: Int = 0,
     private val mutex: Mutex = Mutex(),
-    private val neighbors: MutableSet<String> = mutableSetOf()
+    private val neighbors: MutableSet<String> = mutableSetOf(),
+    private val messages: MutableSet<Int> = mutableSetOf()
 ) {
     companion object {
         val json = Json {
@@ -66,6 +68,10 @@ class Node private constructor(
             Message.Type.TOPOLOGY.name -> TopologyMessage.Handler(this).accept(
                 json.decodeFromString<TopologyMessage>(data)
             )
+
+            Message.Type.BROADCAST.name -> BroadcastMessage.Handler(this).accept(
+                json.decodeFromString<BroadcastMessage>(data)
+            )
         }
     }
 
@@ -79,6 +85,23 @@ class Node private constructor(
 
     suspend fun meet(neighbors: Set<String>) = mutex.withLock {
         this.neighbors.addAll(neighbors)
+    }
+
+    suspend fun accept(message: BroadcastMessage) = mutex.withLock {
+        val new = this.messages.add(message.body.message)
+        if (!new) {
+            return@withLock
+        }
+
+        this.neighbors.forEach {
+            val gossip = BroadcastMessage(
+                source = this.id,
+                destination = it,
+                body = message.body
+            )
+
+            this.produce(gossip)
+        }
     }
 
     private fun debug(value: String) {

@@ -34,7 +34,13 @@ abstract class Message {
         TOPOLOGY,
 
         @SerialName("topology_ok")
-        TOPOLOGY_OK
+        TOPOLOGY_OK,
+
+        @SerialName("broadcast")
+        BROADCAST,
+
+        @SerialName("broadcast_ok")
+        BROADCAST_OK,
     }
 
     abstract class Handler<M : Message> {
