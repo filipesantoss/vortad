@@ -4,6 +4,7 @@ import filipesantoss.vortad.protocol.Message
 import filipesantoss.vortad.workload.Node
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /**
  * @see {https://github.com/jepsen-io/maelstrom/blob/main/doc/workloads.md#rpc-topology}
@@ -24,6 +25,7 @@ data class TopologyMessage(
         @SerialName("topology")
         val topology: Map<String, Set<String>>
     ) : Message.Body(Type.TOPOLOGY) {
+        @Transient
         override val inReplyTo: Int? = null
     }
 

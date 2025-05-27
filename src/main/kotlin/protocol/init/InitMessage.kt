@@ -4,6 +4,7 @@ import filipesantoss.vortad.protocol.Message
 import filipesantoss.vortad.workload.Node
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /**
  * @see {https://github.com/jepsen-io/maelstrom/blob/main/doc/protocol.md#initialization}
@@ -26,6 +27,7 @@ data class InitMessage(
         @SerialName("node_ids")
         val nodeIds: Set<String>
     ) : Message.Body(Type.INIT) {
+        @Transient
         override val inReplyTo: Int? = null
     }
 

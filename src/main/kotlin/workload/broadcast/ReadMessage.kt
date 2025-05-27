@@ -4,6 +4,7 @@ import filipesantoss.vortad.protocol.Message
 import filipesantoss.vortad.workload.Node
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 @Serializable
 data class ReadMessage(
@@ -19,6 +20,7 @@ data class ReadMessage(
         @SerialName("msg_id")
         override val messageId: Int,
     ) : Message.Body(Type.READ) {
+        @Transient
         override val inReplyTo: Int? = null
     }
 
