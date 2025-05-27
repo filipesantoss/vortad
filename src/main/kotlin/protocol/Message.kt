@@ -41,6 +41,12 @@ abstract class Message {
 
         @SerialName("broadcast_ok")
         BROADCAST_OK,
+
+        @SerialName("read")
+        READ,
+
+        @SerialName("read_ok")
+        READ_OK,
     }
 
     abstract class Handler<M : Message> {

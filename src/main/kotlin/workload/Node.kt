@@ -3,6 +3,7 @@ package filipesantoss.vortad.workload
 import filipesantoss.vortad.protocol.Message
 import filipesantoss.vortad.protocol.init.InitMessage
 import filipesantoss.vortad.workload.broadcast.BroadcastMessage
+import filipesantoss.vortad.workload.broadcast.ReadMessage
 import filipesantoss.vortad.workload.broadcast.TopologyMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -72,6 +73,10 @@ class Node private constructor(
             Message.Type.BROADCAST.name -> BroadcastMessage.Handler(this).accept(
                 json.decodeFromString<BroadcastMessage>(data)
             )
+
+            Message.Type.READ.name -> ReadMessage.Handler(this).accept(
+                json.decodeFromString<ReadMessage>(data)
+            )
         }
     }
 
@@ -90,10 +95,14 @@ class Node private constructor(
     suspend fun accept(message: BroadcastMessage) = mutex.withLock {
         val new = this.messages.add(message.body.message)
         if (!new) {
-            return@withLock
+            return
         }
 
         this.neighbors.forEach {
+            if (it === message.source) {
+                return
+            }
+
             val gossip = BroadcastMessage(
                 source = this.id,
                 destination = it,
@@ -103,6 +112,8 @@ class Node private constructor(
             this.produce(gossip)
         }
     }
+
+    fun getMessages(): Set<Int> = messages.toSet()
 
     private fun debug(value: String) {
         System.err.println(value)

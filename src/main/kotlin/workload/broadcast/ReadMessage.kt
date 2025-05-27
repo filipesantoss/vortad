@@ -1,15 +1,12 @@
-package filipesantoss.vortad.protocol.init
+package filipesantoss.vortad.workload.broadcast
 
 import filipesantoss.vortad.protocol.Message
 import filipesantoss.vortad.workload.Node
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * @see {https://github.com/jepsen-io/maelstrom/blob/main/doc/protocol.md#initialization}
- */
 @Serializable
-data class InitMessage(
+data class ReadMessage(
     @SerialName("src")
     override val source: String,
     @SerialName("dest")
@@ -21,20 +18,19 @@ data class InitMessage(
     data class Body(
         @SerialName("msg_id")
         override val messageId: Int,
-        @SerialName("node_id")
-        val nodeId: String
-    ) : Message.Body(Type.INIT) {
+    ) : Message.Body(Type.READ) {
         override val inReplyTo: Int? = null
     }
 
-    class Handler(override val node: Node) : Message.Handler<InitMessage>() {
-        override suspend fun accept(message: InitMessage) {
-            val response = InitOkMessage(
+    class Handler(override val node: Node) : Message.Handler<ReadMessage>() {
+        override suspend fun accept(message: ReadMessage) {
+            val response = ReadOkMessage(
                 source = node.id,
                 destination = message.source,
-                body = InitOkMessage.Body(
+                body = ReadOkMessage.Body(
                     messageId = node.next(),
-                    inReplyTo = message.body.messageId
+                    inReplyTo = message.body.messageId,
+                    messages = node.getMessages()
                 )
             )
 

@@ -39,7 +39,6 @@ data class BroadcastMessage(
             )
 
             node.produce(response)
-
             node.accept(message)
         }
     }
