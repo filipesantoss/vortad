@@ -1,5 +1,6 @@
 package filipesantoss.vortad.protocol
 
+import filipesantoss.vortad.workload.Node
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -28,9 +29,17 @@ abstract class Message {
 
         @SerialName("init_ok")
         INIT_OK,
+
+        @SerialName("topology")
+        TOPOLOGY,
+
+        @SerialName("topology_ok")
+        TOPOLOGY_OK
     }
 
-    interface Handler<M : Message> {
-        suspend fun accept(node: Node, message: M)
+    abstract class Handler<M : Message> {
+        abstract val node: Node
+
+        abstract suspend fun accept(message: M)
     }
 }

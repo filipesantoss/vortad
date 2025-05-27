@@ -1,4 +1,4 @@
-package filipesantoss.vortad.protocol.init
+package filipesantoss.vortad.workload.broadcast
 
 import filipesantoss.vortad.protocol.Message
 import filipesantoss.vortad.workload.Node
@@ -6,10 +6,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * @see {https://github.com/jepsen-io/maelstrom/blob/main/doc/protocol.md#initialization}
+ * @see {https://github.com/jepsen-io/maelstrom/blob/main/doc/workloads.md#rpc-topology}
  */
 @Serializable
-data class InitMessage(
+data class TopologyMessage(
     @SerialName("src")
     override val source: String,
     @SerialName("dest")
@@ -21,24 +21,27 @@ data class InitMessage(
     data class Body(
         @SerialName("msg_id")
         override val messageId: Int,
-        @SerialName("node_id")
-        val nodeId: String
-    ) : Message.Body(Type.INIT) {
+        @SerialName("topology")
+        val topology: Map<String, Set<String>>
+    ) : Message.Body(Type.TOPOLOGY) {
         override val inReplyTo: Int? = null
     }
 
-    class Handler(override val node: Node) : Message.Handler<InitMessage>() {
-        override suspend fun accept(message: InitMessage) {
-            val response = InitOkMessage(
+    class Handler(override val node: Node) : Message.Handler<TopologyMessage>() {
+        override suspend fun accept(message: TopologyMessage) {
+            val response = TopologyOkMessage(
                 source = node.id,
                 destination = message.source,
-                body = InitOkMessage.Body(
+                body = TopologyOkMessage.Body(
                     messageId = node.next(),
                     inReplyTo = message.body.messageId
                 )
             )
 
             node.produce(response)
+
+            val neighbors = message.body.topology[node.id]
+            node.meet(neighbors as Set<String>)
         }
     }
 }

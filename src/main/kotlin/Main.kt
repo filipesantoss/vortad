@@ -1,6 +1,6 @@
 package filipesantoss.vortad
 
-import filipesantoss.vortad.protocol.Node
+import filipesantoss.vortad.workload.Node
 
 fun main() {
     Node.init().listen()

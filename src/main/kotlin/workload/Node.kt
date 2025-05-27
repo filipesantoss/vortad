@@ -1,6 +1,8 @@
-package filipesantoss.vortad.protocol
+package filipesantoss.vortad.workload
 
+import filipesantoss.vortad.protocol.Message
 import filipesantoss.vortad.protocol.init.InitMessage
+import filipesantoss.vortad.workload.broadcast.TopologyMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -13,17 +15,14 @@ import kotlinx.serialization.json.jsonPrimitive
 class Node private constructor(
     val id: String,
     private var messageId: Int = 0,
-    private val mutex: Mutex = Mutex()
+    private val mutex: Mutex = Mutex(),
+    private val neighbors: MutableSet<String> = mutableSetOf()
 ) {
     companion object {
         val json = Json {
             encodeDefaults = true
             ignoreUnknownKeys = true
         }
-
-        val handlers = mapOf(
-            Message.Type.INIT to InitMessage.Handler()
-        )
 
         fun init(): Node = runBlocking {
             val data = readln()
@@ -44,7 +43,12 @@ class Node private constructor(
             }
 
             launch(Dispatchers.Default) {
-                consume(data)
+                try {
+                    consume(data)
+                } catch (exception: Exception) {
+                    // TODO: https://github.com/jepsen-io/maelstrom/blob/main/doc/protocol.md#errors
+                    debug(exception.stackTrace.toString())
+                }
             }
         }
     }
@@ -55,21 +59,26 @@ class Node private constructor(
         val type = body?.jsonObject["type"]?.jsonPrimitive?.content
 
         when (type?.uppercase()) {
-            Message.Type.INIT.name -> handlers[Message.Type.INIT]?.accept(
-                this,
+            Message.Type.INIT.name -> InitMessage.Handler(this).accept(
                 json.decodeFromString<InitMessage>(data)
             )
 
-            else -> debug(data)
+            Message.Type.TOPOLOGY.name -> TopologyMessage.Handler(this).accept(
+                json.decodeFromString<TopologyMessage>(data)
+            )
         }
+    }
+
+    suspend fun next() = mutex.withLock {
+        ++messageId
     }
 
     inline fun <reified M : Message> produce(message: M) {
         println(json.encodeToString<M>(message))
     }
 
-    suspend fun next() = mutex.withLock {
-        ++messageId
+    suspend fun meet(neighbors: Set<String>) = mutex.withLock {
+        this.neighbors.addAll(neighbors)
     }
 
     private fun debug(value: String) {
