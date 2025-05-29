@@ -3,15 +3,13 @@ package filipesantoss.vortad.workload
 import filipesantoss.vortad.protocol.Message
 import filipesantoss.vortad.protocol.init.InitMessage
 import filipesantoss.vortad.workload.broadcast.BroadcastMessage
-import filipesantoss.vortad.workload.broadcast.BroadcastOkMessage
+import filipesantoss.vortad.workload.broadcast.GossipMessage
 import filipesantoss.vortad.workload.broadcast.ReadMessage
 import filipesantoss.vortad.workload.broadcast.TopologyMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -19,11 +17,9 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class Node private constructor(
     val id: String,
-    private var messageId: Int = 0,
-    private val mutex: Mutex = Mutex(),
-    private val neighbors: MutableSet<String> = mutableSetOf(),
-    private val received: MutableSet<Int> = mutableSetOf(),
-    private val delivering: MutableSet<Int> = mutableSetOf()
+    private var uuid: Int = 0,
+    private val known: MutableSet<Int> = mutableSetOf(),
+    private val mill: MutableMap<String, MutableSet<Int>> = mutableMapOf(),
 ) {
     companion object {
         val json = Json {
@@ -43,15 +39,17 @@ class Node private constructor(
     }
 
     fun listen() = runBlocking {
+        launch(Dispatchers.Default) {
+            propagate()
+        }
+
         while (true) {
             val data = readlnOrNull()
             if (data == null) {
                 break
             }
 
-            launch(Dispatchers.Default) {
-                consume(data)
-            }
+            consume(data)
         }
     }
 
@@ -65,25 +63,32 @@ class Node private constructor(
                 val input = json.decodeFromString<InitMessage>(data)
                 val output = InitMessage.Response(input).through(this)
                 produce(output)
-                meet(input.body.nodeIds)
             }
 
             Message.Type.TOPOLOGY.name -> {
                 val input = json.decodeFromString<TopologyMessage>(data)
                 val output = TopologyMessage.Response(input).through(this)
                 produce(output)
+
+                val neighbors = input.body.topology[id] as Set<String>
+                mill.putAll(neighbors.map { it to mutableSetOf() })
             }
 
             Message.Type.BROADCAST.name -> {
                 val input = json.decodeFromString<BroadcastMessage>(data)
                 val output = BroadcastMessage.Response(input).through(this)
                 produce(output)
-                ping(input)
+
+                val message = input.body.message
+                known.add(message)
             }
 
-            Message.Type.BROADCAST_OK.name -> {
-                val input = json.decodeFromString<BroadcastOkMessage>(data)
-                pong(input)
+            Message.Type.GOSSIP.name -> {
+                val input = json.decodeFromString<GossipMessage>(data)
+
+                val messages = input.body.messages
+                known.addAll(messages)
+                mill[input.source]!!.addAll(messages)
             }
 
             Message.Type.READ.name -> {
@@ -94,71 +99,38 @@ class Node private constructor(
         }
     }
 
-    suspend fun next() = mutex.withLock {
-        ++messageId
-    }
+    fun next() = ++uuid
 
-    fun getMessages(): Set<Int> = received.toSet()
+    fun getMessages(): Set<Int> = known.toSet()
 
     private inline fun <reified M : Message> produce(message: M) {
         println(json.encodeToString<M>(message))
     }
 
-    private suspend fun meet(neighbors: Set<String>) = mutex.withLock {
-        this.neighbors.addAll(neighbors.filter {
-            it != id
-        })
-    }
+    private tailrec suspend fun propagate() {
+        delay(10.milliseconds)
 
-    private suspend fun ping(message: BroadcastMessage) {
-        val new = mutex.withLock {
-            received.add(message.body.message)
+        for (neighbor in mill.keys) {
+            delay(5.milliseconds)
+            share(neighbor)
         }
 
-        if (new) {
-            spread(message)
-        }
+        propagate()
     }
 
-    private suspend fun pong(message: BroadcastOkMessage) = mutex.withLock {
-        delivering.remove(message.body.inReplyTo)
-    }
-
-    private suspend fun spread(message: BroadcastMessage) {
-        neighbors.forEach {
-            if (it == message.source) {
-                return
-            }
-
-            val new = copy(message, it)
-
-            mutex.withLock {
-                delivering.add(new.body.messageId)
-            }
-
-            deliver(new)
+    private fun share(neighbor: String) {
+        val message = gossip(neighbor)
+        if (message.body.messages.isNotEmpty()) {
+            produce(message)
         }
     }
 
-    private suspend fun copy(message: BroadcastMessage, to: String): BroadcastMessage = BroadcastMessage(
+    private fun gossip(destination: String): GossipMessage = GossipMessage(
         source = id,
-        destination = to,
-        body = BroadcastMessage.Body(
-            messageId = next(),
-            message = message.body.message
+        destination = destination,
+        body = GossipMessage.Body(
+            messages = known subtract mill[destination]!!
         )
     )
-
-    private suspend fun deliver(message: BroadcastMessage) {
-        while (true) {
-            mutex.withLock {
-                if (message.body.messageId !in delivering) {
-                    return
-                }
-
-                produce(message)
-                delay(5.milliseconds)
-            }
-        }
-    }
 }
+

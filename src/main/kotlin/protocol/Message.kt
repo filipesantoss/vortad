@@ -18,7 +18,7 @@ abstract class Message {
         @SerialName("type")
         val type: Type
     ) {
-        abstract val messageId: Int
+        abstract val messageId: Int?
         abstract val inReplyTo: Int?
     }
 
@@ -41,6 +41,9 @@ abstract class Message {
 
         @SerialName("broadcast_ok")
         BROADCAST_OK,
+
+        @SerialName("gossip")
+        GOSSIP,
 
         @SerialName("read")
         READ,
