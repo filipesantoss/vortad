@@ -6,20 +6,18 @@ import filipesantoss.vortad.workload.broadcast.BroadcastMessage
 import filipesantoss.vortad.workload.broadcast.GossipMessage
 import filipesantoss.vortad.workload.broadcast.ReadMessage
 import filipesantoss.vortad.workload.broadcast.TopologyMessage
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.time.Duration.Companion.milliseconds
+import java.time.Duration
+import kotlin.concurrent.thread
 
 class Node private constructor(
     val id: String,
     private var uuid: Int = 0,
     private val known: MutableSet<Int> = mutableSetOf(),
-    private val mill: MutableMap<String, MutableSet<Int>> = mutableMapOf(),
+    private val mill: MutableMap<String, MutableSet<Int>> = mutableMapOf()
 ) {
     companion object {
         val json = Json {
@@ -38,24 +36,26 @@ class Node private constructor(
         }
     }
 
-    fun listen() = runBlocking {
-        launch(Dispatchers.Default) {
+    fun run() {
+        thread {
             propagate()
         }
 
-        while (true) {
-            val data = readlnOrNull()
-            if (data == null) {
-                break
-            }
-
-            consume(data)
-        }
+        listen()
     }
 
-    private suspend fun consume(data: String) {
-        val element = json.parseToJsonElement(data)
-        val body = element.jsonObject["body"]
+    private tailrec fun listen() {
+        val data = readlnOrNull()
+        if (data != null) {
+            consume(data)
+        }
+
+        listen()
+    }
+
+    @Synchronized
+    private fun consume(data: String) {
+        val body = json.parseToJsonElement(data).jsonObject["body"]
         val type = body?.jsonObject["type"]?.jsonPrimitive?.content
 
         when (type?.uppercase()) {
@@ -107,19 +107,20 @@ class Node private constructor(
         println(json.encodeToString<M>(message))
     }
 
-    private tailrec suspend fun propagate() {
-        delay(10.milliseconds)
+    private tailrec fun propagate() {
+        Thread.sleep(Duration.ofMillis(100))
 
         for (neighbor in mill.keys) {
-            delay(5.milliseconds)
             share(neighbor)
         }
 
         propagate()
     }
 
+    @Synchronized
     private fun share(neighbor: String) {
         val message = gossip(neighbor)
+
         if (message.body.messages.isNotEmpty()) {
             produce(message)
         }
@@ -133,4 +134,3 @@ class Node private constructor(
         )
     )
 }
-

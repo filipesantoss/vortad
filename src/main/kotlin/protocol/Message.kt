@@ -49,12 +49,12 @@ abstract class Message {
         READ,
 
         @SerialName("read_ok")
-        READ_OK,
+        READ_OK
     }
 
     abstract class Response<I : Message, O : Message> {
         abstract val to: I
 
-        abstract suspend fun through(node: Node): O
+        abstract fun through(node: Node): O
     }
 }

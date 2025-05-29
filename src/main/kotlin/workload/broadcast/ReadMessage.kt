@@ -18,7 +18,7 @@ data class ReadMessage(
     @Serializable
     data class Body(
         @SerialName("msg_id")
-        override val messageId: Int,
+        override val messageId: Int
     ) : Message.Body(Type.READ) {
         @Transient
         override val inReplyTo: Int? = null
@@ -27,7 +27,7 @@ data class ReadMessage(
     class Response(
         override val to: ReadMessage
     ) : Message.Response<ReadMessage, ReadOkMessage>() {
-        override suspend fun through(node: Node) = ReadOkMessage(
+        override fun through(node: Node) = ReadOkMessage(
             source = node.id,
             destination = to.source,
             body = ReadOkMessage.Body(

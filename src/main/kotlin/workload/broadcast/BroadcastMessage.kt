@@ -32,7 +32,7 @@ data class BroadcastMessage(
     class Response(
         override val to: BroadcastMessage
     ) : Message.Response<BroadcastMessage, BroadcastOkMessage>() {
-        override suspend fun through(node: Node) = BroadcastOkMessage(
+        override fun through(node: Node) = BroadcastOkMessage(
             source = node.id,
             destination = to.source,
             body = BroadcastOkMessage.Body(

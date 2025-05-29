@@ -32,7 +32,7 @@ data class TopologyMessage(
     class Response(
         override val to: TopologyMessage
     ) : Message.Response<TopologyMessage, TopologyOkMessage>() {
-        override suspend fun through(node: Node) = TopologyOkMessage(
+        override fun through(node: Node) = TopologyOkMessage(
             source = node.id,
             destination = to.source,
             body = TopologyOkMessage.Body(

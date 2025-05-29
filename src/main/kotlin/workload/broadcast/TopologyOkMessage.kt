@@ -21,6 +21,6 @@ data class TopologyOkMessage(
         @SerialName("msg_id")
         override val messageId: Int,
         @SerialName("in_reply_to")
-        override val inReplyTo: Int,
+        override val inReplyTo: Int
     ) : Message.Body(Type.TOPOLOGY_OK)
 }

@@ -34,7 +34,7 @@ data class InitMessage(
     class Response(
         override val to: InitMessage
     ) : Message.Response<InitMessage, InitOkMessage>() {
-        override suspend fun through(node: Node) = InitOkMessage(
+        override fun through(node: Node) = InitOkMessage(
             source = node.id,
             destination = to.source,
             body = InitOkMessage.Body(
