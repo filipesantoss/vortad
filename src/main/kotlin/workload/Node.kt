@@ -67,25 +67,22 @@ class Node private constructor(
 
             Message.Type.TOPOLOGY.name -> {
                 val input = json.decodeFromString<TopologyMessage>(data)
-                val output = TopologyMessage.Response(input).through(this)
-                produce(output)
-
                 val neighbors = input.body.topology[id] as Set<String>
                 mill.putAll(neighbors.map { it to mutableSetOf() })
+                val output = TopologyMessage.Response(input).through(this)
+                produce(output)
             }
 
             Message.Type.BROADCAST.name -> {
                 val input = json.decodeFromString<BroadcastMessage>(data)
-                val output = BroadcastMessage.Response(input).through(this)
-                produce(output)
-
                 val message = input.body.message
                 known.add(message)
+                val output = BroadcastMessage.Response(input).through(this)
+                produce(output)
             }
 
             Message.Type.GOSSIP.name -> {
                 val input = json.decodeFromString<GossipMessage>(data)
-
                 val messages = input.body.messages
                 known.addAll(messages)
                 mill[input.source]!!.addAll(messages)
