@@ -6,7 +6,6 @@ import filipesantoss.vortad.workload.broadcast.BroadcastMessage
 import filipesantoss.vortad.workload.broadcast.GossipMessage
 import filipesantoss.vortad.workload.broadcast.ReadMessage
 import filipesantoss.vortad.workload.broadcast.TopologyMessage
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -25,14 +24,14 @@ class Node private constructor(
             ignoreUnknownKeys = true
         }
 
-        fun init(): Node = runBlocking {
+        fun init(): Node {
             val data = readln()
             val init = json.decodeFromString<InitMessage>(data)
 
             val node = Node(init.body.nodeId)
             node.consume(data)
 
-            node
+            return node
         }
     }
 
